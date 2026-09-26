@@ -48,8 +48,11 @@ class Prefs(context: Context) {
         private const val KEY_BG = "bg_color"
 
         // Sensible defaults: the things that always work unprivileged.
+        // LATENCY is deliberately excluded: it's the only metric that makes active
+        // network requests (it needs INTERNET), so it's opt-in rather than on by default.
         private val DEFAULT_ON = setOf(
             MetricId.RESOLUTION, MetricId.RAM, MetricId.LOAD, MetricId.TEMP, MetricId.AI_UPSCALE,
+            MetricId.VPN, MetricId.PACKET_DROPS,
         )
     }
 }

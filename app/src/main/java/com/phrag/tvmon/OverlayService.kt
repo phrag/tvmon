@@ -15,6 +15,8 @@ import android.view.Gravity
 import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
+import com.phrag.tvmon.metric.LatencyProbe
+import com.phrag.tvmon.metric.MetricId
 import com.phrag.tvmon.metric.MetricSource
 import com.phrag.tvmon.metric.allSources
 import com.phrag.tvmon.nativebridge.SysCore
@@ -86,6 +88,8 @@ class OverlayService : Service() {
             (prefs.bgColor and 0x00FFFFFF) or (prefs.bgAlpha shl 24)
         )
 
+        if (MetricId.LATENCY in enabled) LatencyProbe.start(this) else LatencyProbe.stop()
+
         root.removeAllViews()
         for (source in sources) {
             if (source.id !in enabled) continue
@@ -112,6 +116,7 @@ class OverlayService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacks(tick)
+        LatencyProbe.stop()
         container?.let { runCatching { wm.removeView(it) } }
         container = null
         running = false

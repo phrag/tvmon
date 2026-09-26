@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.hardware.display.DisplayManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.TrafficStats
 import android.net.wifi.WifiManager
 import android.os.BatteryManager
@@ -27,6 +29,9 @@ fun allSources(context: Context): List<MetricSource> = listOf(
     TempSource(),
     UptimeSource(),
     UpscaleSource(),
+    VpnSource(context),
+    PacketDropsSource(),
+    LatencySource(),
 )
 
 // ---- framework-API sources ---------------------------------------------------
@@ -193,5 +198,46 @@ class UpscaleSource : MetricSource {
         val lines = mutableListOf("filter: $filter")
         if (comparisonMode) lines.add("comparison mode: on")
         return lines
+    }
+}
+
+/** Whether the active network route is through a VPN. Always shows a state, never hides. */
+class VpnSource(private val ctx: Context) : MetricSource {
+    override val id = MetricId.VPN
+    override fun sample(native: NativeSnapshot?): List<String>? {
+        val cm = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return null
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return null) ?: return null
+        val active = caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+        return listOf(if (active) "active" else "off")
+    }
+}
+
+/** Cumulative dropped-packet counters since boot, summed across non-loopback interfaces. */
+class PacketDropsSource : MetricSource {
+    override val id = MetricId.PACKET_DROPS
+    override fun sample(native: NativeSnapshot?): List<String>? {
+        val (rx, tx) = native?.netDrops() ?: return null
+        return listOf("rx $rx / tx $tx (since boot)")
+    }
+}
+
+/**
+ * Round-trip latency to the local gateway and a public resolver. Unlike the
+ * other sources this needs active network probing (there's no passive kernel
+ * counter for RTT), so the actual pinging happens on a background thread in
+ * [LatencyProbe] — sample() only ever reads its cached last-measured values,
+ * keeping this call as cheap as every other tile despite the ~1s ping cost.
+ */
+class LatencySource : MetricSource {
+    override val id = MetricId.LATENCY
+    override fun sample(native: NativeSnapshot?): List<String>? {
+        val gw = LatencyProbe.gatewayMs
+        val net = LatencyProbe.internetMs
+        if (gw == null && net == null) return null
+        return listOf(
+            "gateway: " + (gw?.let { "${it}ms" } ?: "timeout"),
+            "internet: " + (net?.let { "${it}ms" } ?: "timeout"),
+        )
     }
 }

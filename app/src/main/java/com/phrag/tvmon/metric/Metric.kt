@@ -13,6 +13,9 @@ enum class MetricId(val label: String) {
     TEMP("Temperatures"),
     UPTIME("Uptime"),
     AI_UPSCALE("AI Upscaling"),
+    VPN("VPN"),
+    PACKET_DROPS("Packet drops"),
+    LATENCY("Latency"),
 }
 
 /**

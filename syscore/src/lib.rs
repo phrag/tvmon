@@ -46,6 +46,14 @@ pub struct Upscale {
     pub comparison_mode: bool,
 }
 
+/// Cumulative (since-boot) dropped-packet counters, summed across all
+/// non-loopback interfaces.
+#[derive(Serialize, Debug, Clone, PartialEq)]
+pub struct NetDrops {
+    pub rx_drop: u64,
+    pub tx_drop: u64,
+}
+
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct Snapshot {
     pub mem: Option<MemInfo>,
@@ -53,6 +61,7 @@ pub struct Snapshot {
     pub uptime_secs: Option<f64>,
     pub thermal: Vec<ThermalZone>,
     pub upscale: Option<Upscale>,
+    pub net_drops: Option<NetDrops>,
 }
 
 // ---- pure parsers (unit-tested) ----------------------------------------------
@@ -89,6 +98,43 @@ pub fn parse_loadavg(content: &str) -> Option<LoadAvg> {
 
 pub fn parse_uptime(content: &str) -> Option<f64> {
     content.split_whitespace().next()?.parse().ok()
+}
+
+/// Sums rx_drop/tx_drop across all non-loopback interfaces in /proc/net/dev.
+/// Format per line: "iface: rx_bytes rx_packets rx_errs rx_drop ... tx_bytes
+/// tx_packets tx_errs tx_drop ..." (16 fields after the interface name).
+pub fn parse_net_dev(content: &str) -> Option<NetDrops> {
+    let mut rx_drop = 0u64;
+    let mut tx_drop = 0u64;
+    let mut found = false;
+    for line in content.lines().skip(2) {
+        let mut split = line.splitn(2, ':');
+        let iface = match split.next() {
+            Some(s) => s.trim(),
+            None => continue,
+        };
+        let rest = match split.next() {
+            Some(s) => s,
+            None => continue,
+        };
+        if iface.is_empty() || iface == "lo" {
+            continue;
+        }
+        let fields: Vec<&str> = rest.split_whitespace().collect();
+        if fields.len() < 16 {
+            continue;
+        }
+        if let (Ok(rd), Ok(td)) = (fields[3].parse::<u64>(), fields[11].parse::<u64>()) {
+            rx_drop += rd;
+            tx_drop += td;
+            found = true;
+        }
+    }
+    if found {
+        Some(NetDrops { rx_drop, tx_drop })
+    } else {
+        None
+    }
 }
 
 // ---- file readers under a base dir (so tests can fake "/") -------------------
@@ -187,6 +233,7 @@ pub fn snapshot_from(base: &Path) -> Snapshot {
         uptime_secs: read(base, "proc/uptime").as_deref().and_then(parse_uptime),
         thermal: read_thermal(base),
         upscale: read_upscale(),
+        net_drops: read(base, "proc/net/dev").as_deref().and_then(parse_net_dev),
     }
 }
 
@@ -248,6 +295,25 @@ mod tests {
     #[test]
     fn uptime_takes_first_field() {
         assert_eq!(parse_uptime("12345.67 9999.00\n"), Some(12345.67));
+    }
+
+    #[test]
+    fn net_dev_sums_non_loopback_drops() {
+        let content = "\
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo:  1000      10    0    0    0     0          0         0     1000      10    0    0    0     0       0          0
+ wlan0: 50000     100    0    5    0     0          0         0    20000      80    0    2    0     0       0          0
+  eth0: 30000      60    0    1    0     0          0         0    15000      40    0    3    0     0       0          0
+";
+        let d = parse_net_dev(content).unwrap();
+        assert_eq!(d.rx_drop, 6); // 5 + 1, lo excluded
+        assert_eq!(d.tx_drop, 5); // 2 + 3, lo excluded
+    }
+
+    #[test]
+    fn net_dev_missing_is_none() {
+        assert_eq!(parse_net_dev("Inter-|   Receive\n face |bytes\n"), None);
     }
 
     #[test]

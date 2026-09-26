@@ -75,4 +75,10 @@ class NativeSnapshot(private val root: JSONObject) {
         val o = root.optJSONObject("upscale") ?: return null
         return o.optString("filter") to o.optBoolean("comparison_mode")
     }
+
+    /** (rx_drop, tx_drop), cumulative since boot across non-loopback interfaces, or null. */
+    fun netDrops(): Pair<Long, Long>? {
+        val o = root.optJSONObject("net_drops") ?: return null
+        return o.optLong("rx_drop") to o.optLong("tx_drop")
+    }
 }

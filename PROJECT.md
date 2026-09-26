@@ -35,6 +35,9 @@ unprivileged. In vs. out:
 | Temperatures | `/sys/class/thermal` (Rust, best-effort) | ⚠️ best-effort — same SELinux denial confirmed on a real Shield |
 | Uptime | `/proc/uptime` (Rust) | ⚠️ best-effort — same SELinux denial confirmed on a real Shield |
 | AI Upscaling filter (Shield only) | `persist.vendor.tegra.hwc.upscale.filter` sysprop, read natively via `__system_property_read_callback` (Rust) | ✅ in — absent on non-Shield boxes |
+| VPN active | `ConnectivityManager` / `NetworkCapabilities.TRANSPORT_VPN` (Kotlin) | ✅ in |
+| Dropped packets (cumulative, since boot) | `/proc/net/dev` rx_drop/tx_drop, summed across non-loopback interfaces (Rust) | ⚠️ best-effort — same class of file as load/uptime; may hit the same SELinux wall on some devices |
+| Latency (gateway + public resolver RTT) | active `ping` probe on a background thread (`LatencyProbe`, Kotlin) | ✅ in, **opt-in only** (off by default) — the only metric needing `INTERNET` and active network egress; only probes while the tile is enabled |
 | **Per-core CPU %** | `/proc/stat` | ❌ out — SELinux-blocked without privilege |
 | **GPU freq / load** | Tegra sysfs | ❌ out — blocked, and Tegra paths differ from the usual Qualcomm ones |
 
