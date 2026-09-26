@@ -1,6 +1,9 @@
 package com.phrag.tvmon.nativebridge
 
+import android.util.Log
 import org.json.JSONObject
+
+private const val TAG = "SysCore"
 
 /**
  * Bridge to the Rust core (libsyscore.so). If the .so isn't bundled (e.g. you
@@ -15,6 +18,7 @@ object SysCore {
             System.loadLibrary("syscore")
             true
         } catch (t: Throwable) {
+            Log.e(TAG, "loadLibrary(syscore) failed", t)
             false
         }
     }
@@ -27,8 +31,13 @@ object SysCore {
     /** One native read; null if the library is missing or the call fails. */
     fun snapshot(): NativeSnapshot? {
         if (!available) return null
-        val json = runCatching { nativeSnapshotJson() }.getOrNull() ?: return null
-        return runCatching { NativeSnapshot(JSONObject(json)) }.getOrNull()
+        val json = runCatching { nativeSnapshotJson() }
+            .onFailure { Log.e(TAG, "nativeSnapshotJson() threw", it) }
+            .getOrNull() ?: return null
+        Log.d(TAG, "snapshot: $json")
+        return runCatching { NativeSnapshot(JSONObject(json)) }
+            .onFailure { Log.e(TAG, "JSON parse failed for: $json", it) }
+            .getOrNull()
     }
 }
 
