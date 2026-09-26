@@ -1,4 +1,4 @@
-package com.example.tvmon
+package com.phrag.tvmon
 
 import android.app.Activity
 import android.content.Intent
@@ -14,8 +14,8 @@ import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.Switch
 import android.widget.TextView
-import com.example.tvmon.metric.MetricId
-import com.example.tvmon.prefs.Prefs
+import com.phrag.tvmon.metric.MetricId
+import com.phrag.tvmon.prefs.Prefs
 
 /**
  * The launcher screen. Plain Views on purpose: D-pad focus traversal works out

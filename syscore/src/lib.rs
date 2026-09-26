@@ -135,7 +135,7 @@ pub fn snapshot_json() -> String {
 }
 
 // ---- JNI surface (Android only) ---------------------------------------------
-// Symbol maps to: com.example.tvmon.nativebridge.SysCore.nativeSnapshotJson()
+// Symbol maps to: com.phrag.tvmon.nativebridge.SysCore.nativeSnapshotJson()
 #[cfg(target_os = "android")]
 mod android {
     use super::snapshot_json;
@@ -144,7 +144,7 @@ mod android {
     use jni::JNIEnv;
 
     #[no_mangle]
-    pub extern "system" fn Java_com_example_tvmon_nativebridge_SysCore_nativeSnapshotJson(
+    pub extern "system" fn Java_com_phrag_tvmon_nativebridge_SysCore_nativeSnapshotJson(
         mut env: JNIEnv,
         _class: JClass,
     ) -> jstring {

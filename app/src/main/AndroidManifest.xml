@@ -21,7 +21,7 @@
             <!-- Android TV home screen entry.
                  NOTE: stock launchers also want android:banner="@drawable/banner"
                  (320x180) or the tile may be hidden; until then launch with
-                 adb shell am start -n com.example.tvmon/.SettingsActivity -->
+                 adb shell am start -n com.phrag.tvmon/.SettingsActivity -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />

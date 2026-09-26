@@ -1,4 +1,4 @@
-package com.example.tvmon
+package com.phrag.tvmon
 
 import android.app.Service
 import android.content.Context
@@ -14,10 +14,10 @@ import android.view.Gravity
 import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
-import com.example.tvmon.metric.MetricSource
-import com.example.tvmon.metric.allSources
-import com.example.tvmon.nativebridge.SysCore
-import com.example.tvmon.prefs.Prefs
+import com.phrag.tvmon.metric.MetricSource
+import com.phrag.tvmon.metric.allSources
+import com.phrag.tvmon.nativebridge.SysCore
+import com.phrag.tvmon.prefs.Prefs
 
 /**
  * A TYPE_APPLICATION_OVERLAY window that stacks one tile per enabled metric and

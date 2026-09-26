@@ -1,8 +1,8 @@
-package com.example.tvmon.prefs
+package com.phrag.tvmon.prefs
 
 import android.content.Context
 import android.graphics.Color
-import com.example.tvmon.metric.MetricId
+import com.phrag.tvmon.metric.MetricId
 
 /** Simple SharedPreferences-backed settings. No external deps. */
 class Prefs(context: Context) {

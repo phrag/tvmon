@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.tvmon"
+    namespace = "com.phrag.tvmon"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.tvmon"
+        applicationId = "com.phrag.tvmon"
         minSdk = 26          // covers every Shield; APPLICATION_OVERLAY is 26+
         targetSdk = 34
         versionCode = 1

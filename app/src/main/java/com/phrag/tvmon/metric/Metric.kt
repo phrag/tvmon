@@ -1,6 +1,6 @@
-package com.example.tvmon.metric
+package com.phrag.tvmon.metric
 
-import com.example.tvmon.nativebridge.NativeSnapshot
+import com.phrag.tvmon.nativebridge.NativeSnapshot
 
 /** Stable ids for tiles — used as SharedPreferences keys and in the UI. */
 enum class MetricId(val label: String) {

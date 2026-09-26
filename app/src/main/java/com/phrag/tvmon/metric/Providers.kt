@@ -1,4 +1,4 @@
-package com.example.tvmon.metric
+package com.phrag.tvmon.metric
 
 import android.app.ActivityManager
 import android.content.Context
@@ -10,7 +10,7 @@ import android.os.BatteryManager
 import android.os.Build
 import android.view.Display
 import android.view.WindowManager
-import com.example.tvmon.nativebridge.NativeSnapshot
+import com.phrag.tvmon.nativebridge.NativeSnapshot
 
 /**
  * The full set of unprivileged sources. No root, no Shizuku — everything here

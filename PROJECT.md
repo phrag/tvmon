@@ -43,7 +43,7 @@ allows it. Nothing else changes.
 ## Architecture
 - `syscore/` — Rust crate. Pure parsers + fake-root readers, unit-tested.
   Exposes `snapshot_json()` over JNI as
-  `com.example.tvmon.nativebridge.SysCore.nativeSnapshotJson()`.
+  `com.phrag.tvmon.nativebridge.SysCore.nativeSnapshotJson()`.
   Returns JSON so the JNI ABI stays a single string (no struct marshalling).
 - `metric/` — `MetricSource` interface; each tile is a source that returns lines
   of text (or null when unavailable). Framework sources ignore the native
@@ -61,7 +61,9 @@ allows it. Nothing else changes.
   first Android Studio build will surface any stray import.
 
 ## TODO / open edges
-- Build `syscore` for Android ABIs with cargo-ndk into `app/src/main/jniLibs/`.
+- ~~Build `syscore` for Android ABIs with cargo-ndk into `app/src/main/jniLibs/`~~
+  — done in CI (`.github/workflows/build-apk.yml`), which also runs
+  `:app:assembleDebug` and uploads the APK as a workflow artifact.
 - Leanback launcher tile needs a 320x180 `banner` drawable, or launch via adb.
 - Start-on-boot: included as a pref + BootReceiver, but a robust boot start on
   Android 8+ likely needs a foreground service — flagged in code.

@@ -1,9 +1,9 @@
-package com.example.tvmon
+package com.phrag.tvmon
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.example.tvmon.prefs.Prefs
+import com.phrag.tvmon.prefs.Prefs
 
 /**
  * Re-shows the overlay after a reboot when both "start on boot" and "show

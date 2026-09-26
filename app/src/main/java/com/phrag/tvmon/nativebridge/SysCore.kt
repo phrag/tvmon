@@ -1,4 +1,4 @@
-package com.example.tvmon.nativebridge
+package com.phrag.tvmon.nativebridge
 
 import org.json.JSONObject
 

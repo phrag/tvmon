@@ -44,18 +44,24 @@ cargo test --manifest-path syscore/Cargo.toml
 ```
 
 ## 2. Build the app
-Open the project in Android Studio (it'll generate the Gradle wrapper) and
-**Build → Build APK(s)**, or from the command line once the wrapper exists:
+Open the project in Android Studio, or from the command line (the Gradle
+wrapper is committed):
 ```bash
 ./gradlew :app:assembleDebug
 ```
+
+### CI: build the APK on GitHub
+`.github/workflows/build-apk.yml` builds `syscore` for both ABIs with
+cargo-ndk, runs the Rust unit tests, then runs `:app:assembleDebug` and
+uploads the result as the `tvmon-debug-apk` workflow artifact. It runs on
+every push/PR, or on demand via the Actions tab ("Run workflow").
 
 ## 3. Sideload to the Shield
 ```bash
 adb connect <shield-ip>:5555        # enable Network debugging on the Shield first
 adb install app/build/outputs/apk/debug/app-debug.apk
-adb shell am start -n com.example.tvmon/.SettingsActivity   # if the tile is hidden
-adb shell appops set com.example.tvmon SYSTEM_ALERT_WINDOW allow  # grant overlay
+adb shell am start -n com.phrag.tvmon/.SettingsActivity   # if the tile is hidden
+adb shell appops set com.phrag.tvmon SYSTEM_ALERT_WINDOW allow  # grant overlay
 ```
 
 Toggle **Show overlay** in the app, pick which tiles you want, and the floating
