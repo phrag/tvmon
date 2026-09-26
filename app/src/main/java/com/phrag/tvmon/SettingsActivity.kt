@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.LinearLayout
@@ -51,7 +52,9 @@ class SettingsActivity : Activity() {
         col.addView(sectionLabel("Metrics"))
         for (id in MetricId.entries) {
             col.addView(switchRow(id.label, prefs.isEnabled(id)) { on ->
-                prefs.setEnabled(id, on); true
+                prefs.setEnabled(id, on)
+                Log.d("SettingsActivity", "$id set to $on, read-back=${prefs.isEnabled(id)}")
+                true
             })
         }
 

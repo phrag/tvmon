@@ -10,6 +10,7 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.util.Log
 import android.view.Gravity
 import android.view.WindowManager
 import android.widget.LinearLayout
@@ -91,6 +92,7 @@ class OverlayService : Service() {
             val lines = source.sample(native) ?: continue   // skip unavailable metrics
             root.addView(tileView(source.id.label, lines))
         }
+        Log.d("OverlayService", "render: enabled=$enabled views=${root.childCount}")
     }
 
     private fun tileView(title: String, lines: List<String>): TextView {
