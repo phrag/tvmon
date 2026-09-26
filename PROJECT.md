@@ -31,9 +31,9 @@ unprivileged. In vs. out:
 | Battery %/mV/temp | `BatteryManager` / sticky intent (Kotlin) | ✅ in |
 | Wi-Fi link speed / freq | `WifiManager` (Kotlin) | ✅ in |
 | Network traffic | `TrafficStats` (Kotlin) | ✅ in |
-| System load (1/5/15) | `/proc/loadavg` (Rust) | ✅ in — the unprivileged stand-in for "CPU activity" |
-| Temperatures | `/sys/class/thermal` (Rust, best-effort) | ✅ in (may be empty on some boxes) |
-| Uptime | `/proc/uptime` (Rust) | ✅ in |
+| System load (1/5/15) | `/proc/loadavg` (Rust) | ⚠️ best-effort — confirmed **SELinux-denied** to third-party apps on a real 2019 Shield; tile just doesn't appear there |
+| Temperatures | `/sys/class/thermal` (Rust, best-effort) | ⚠️ best-effort — same SELinux denial confirmed on a real Shield |
+| Uptime | `/proc/uptime` (Rust) | ⚠️ best-effort — same SELinux denial confirmed on a real Shield |
 | AI Upscaling filter (Shield only) | `persist.vendor.tegra.hwc.upscale.filter` sysprop, read natively via `__system_property_read_callback` (Rust) | ✅ in — absent on non-Shield boxes |
 | **Per-core CPU %** | `/proc/stat` | ❌ out — SELinux-blocked without privilege |
 | **GPU freq / load** | Tegra sysfs | ❌ out — blocked, and Tegra paths differ from the usual Qualcomm ones |
@@ -58,9 +58,16 @@ allows it. Nothing else changes.
 
 ## Verified so far
 - `syscore` compiles on Rust 1.75 and passes 6 unit tests; against a live
-  `/proc` it returns valid JSON for mem/load/uptime. The Android/Gradle side is
-  written but **not yet compiled** (no Android SDK/NDK in the authoring env) —
-  first Android Studio build will surface any stray import.
+  `/proc` on a normal Linux host it returns valid JSON for mem/load/uptime.
+  That host-level check doesn't reflect Android's per-app SELinux policy,
+  though — see below.
+- Built and installed on a real 2019 Shield (CI-built APK, `com.phrag.tvmon`).
+  Confirmed working: video output resolution + live HDR state, RAM, Wi-Fi,
+  network traffic, AI Upscaling filter. Confirmed **SELinux-denied** to
+  third-party apps on this device: `/proc/loadavg`, `/proc/uptime`,
+  `/sys/class/thermal` — `mem` reads fine (it's on the app-readable
+  allowlist), those three aren't. This is a platform restriction, not a bug;
+  the app already falls back to hiding the tile rather than crashing.
 
 ## TODO / open edges
 - ~~Build `syscore` for Android ABIs with cargo-ndk into `app/src/main/jniLibs/`~~

@@ -34,7 +34,6 @@ object SysCore {
         val json = runCatching { nativeSnapshotJson() }
             .onFailure { Log.e(TAG, "nativeSnapshotJson() threw", it) }
             .getOrNull() ?: return null
-        Log.d(TAG, "snapshot: $json")
         return runCatching { NativeSnapshot(JSONObject(json)) }
             .onFailure { Log.e(TAG, "JSON parse failed for: $json", it) }
             .getOrNull()
