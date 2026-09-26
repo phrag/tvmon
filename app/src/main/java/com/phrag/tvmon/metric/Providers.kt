@@ -4,12 +4,11 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.hardware.display.DisplayManager
 import android.net.TrafficStats
 import android.net.wifi.WifiManager
 import android.os.BatteryManager
-import android.os.Build
 import android.view.Display
-import android.view.WindowManager
 import com.phrag.tvmon.nativebridge.NativeSnapshot
 
 /**
@@ -44,10 +43,13 @@ class ResolutionSource(private val ctx: Context) : MetricSource {
         return lines
     }
 
-    private fun display(): Display? =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) ctx.display
-        else @Suppress("DEPRECATION")
-            (ctx.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay
+    // Context#getDisplay() requires a UI-associated context on API 30+, which a
+    // Service context isn't. DisplayManager#getDisplay(int) has no such
+    // restriction and works the same from any context.
+    private fun display(): Display? {
+        val dm = ctx.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+        return dm.getDisplay(Display.DEFAULT_DISPLAY)
+    }
 
     private fun hdrNames(types: IntArray): String {
         if (types.isEmpty()) return "SDR"
