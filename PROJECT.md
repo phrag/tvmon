@@ -25,7 +25,8 @@ unprivileged. In vs. out:
 
 | Tile | Source | Status |
 |------|--------|--------|
-| Output resolution / refresh / HDR | `Display.getMode` + `getHdrCapabilities` (Kotlin) | ✅ in |
+| Output resolution / refresh | `Display.getMode` (Kotlin) | ✅ in |
+| Live HDR state | `Display.isHdr()`, API 33+ (Kotlin) | ✅ in — pre-33 falls back to `getHdrCapabilities` (panel capability, not live state; labeled accordingly) |
 | RAM used/total | `ActivityManager.MemoryInfo` (Kotlin) | ✅ in |
 | Battery %/mV/temp | `BatteryManager` / sticky intent (Kotlin) | ✅ in |
 | Wi-Fi link speed / freq | `WifiManager` (Kotlin) | ✅ in |
@@ -33,6 +34,7 @@ unprivileged. In vs. out:
 | System load (1/5/15) | `/proc/loadavg` (Rust) | ✅ in — the unprivileged stand-in for "CPU activity" |
 | Temperatures | `/sys/class/thermal` (Rust, best-effort) | ✅ in (may be empty on some boxes) |
 | Uptime | `/proc/uptime` (Rust) | ✅ in |
+| AI Upscaling filter (Shield only) | `persist.vendor.tegra.hwc.upscale.filter` sysprop, read natively via `__system_property_read_callback` (Rust) | ✅ in — absent on non-Shield boxes |
 | **Per-core CPU %** | `/proc/stat` | ❌ out — SELinux-blocked without privilege |
 | **GPU freq / load** | Tegra sysfs | ❌ out — blocked, and Tegra paths differ from the usual Qualcomm ones |
 
