@@ -26,6 +26,7 @@ fun allSources(context: Context): List<MetricSource> = listOf(
     LoadSource(),
     TempSource(),
     UptimeSource(),
+    UpscaleSource(),
 )
 
 // ---- framework-API sources ---------------------------------------------------
@@ -181,5 +182,16 @@ class UptimeSource : MetricSource {
         val h = total / 3600
         val m = (total % 3600) / 60
         return listOf(if (h > 0) "${h}h ${m}m" else "${m}m")
+    }
+}
+
+/** Shield-only: reads the Tegra HWC's AI Upscaling filter mode. Absent on other boxes. */
+class UpscaleSource : MetricSource {
+    override val id = MetricId.AI_UPSCALE
+    override fun sample(native: NativeSnapshot?): List<String>? {
+        val (filter, comparisonMode) = native?.upscale() ?: return null
+        val lines = mutableListOf("filter: $filter")
+        if (comparisonMode) lines.add("comparison mode: on")
+        return lines
     }
 }

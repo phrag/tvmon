@@ -49,7 +49,7 @@ class Prefs(context: Context) {
 
         // Sensible defaults: the things that always work unprivileged.
         private val DEFAULT_ON = setOf(
-            MetricId.RESOLUTION, MetricId.RAM, MetricId.LOAD, MetricId.TEMP,
+            MetricId.RESOLUTION, MetricId.RAM, MetricId.LOAD, MetricId.TEMP, MetricId.AI_UPSCALE,
         )
     }
 }

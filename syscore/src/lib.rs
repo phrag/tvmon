@@ -39,12 +39,20 @@ pub struct ThermalZone {
     pub celsius: f32,
 }
 
+#[derive(Serialize, Debug, Clone, PartialEq)]
+pub struct Upscale {
+    /// e.g. "auto", "off" — persist.vendor.tegra.hwc.upscale.filter (Shield-only).
+    pub filter: String,
+    pub comparison_mode: bool,
+}
+
 #[derive(Serialize, Debug, Clone, Default)]
 pub struct Snapshot {
     pub mem: Option<MemInfo>,
     pub load: Option<LoadAvg>,
     pub uptime_secs: Option<f64>,
     pub thermal: Vec<ThermalZone>,
+    pub upscale: Option<Upscale>,
 }
 
 // ---- pure parsers (unit-tested) ----------------------------------------------
@@ -117,12 +125,68 @@ fn read_thermal(base: &Path) -> Vec<ThermalZone> {
     out
 }
 
+// ---- Android system properties (Shield's AI Upscaling toggle) ---------------
+// Read via the Bionic property API directly rather than Java's
+// android.os.SystemProperties, which is a hidden/reflection-only API on
+// modern Android. __system_property_read_callback is public in the NDK since
+// API 26 (our minSdk) and property *reads* are unrestricted for any process;
+// only writes are gated by SELinux, so no special permission is needed.
+#[cfg(target_os = "android")]
+mod sysprop {
+    use std::ffi::{c_char, c_void, CStr, CString};
+
+    #[repr(C)]
+    struct PropInfo {
+        _private: [u8; 0],
+    }
+
+    extern "C" {
+        fn __system_property_find(name: *const c_char) -> *const PropInfo;
+        fn __system_property_read_callback(
+            pi: *const PropInfo,
+            callback: extern "C" fn(*mut c_void, *const c_char, *const c_char, u32),
+            cookie: *mut c_void,
+        );
+    }
+
+    extern "C" fn on_read(cookie: *mut c_void, _name: *const c_char, value: *const c_char, _serial: u32) {
+        let out = unsafe { &mut *(cookie as *mut Option<String>) };
+        *out = unsafe { CStr::from_ptr(value) }.to_str().ok().map(str::to_owned);
+    }
+
+    pub fn get(name: &str) -> Option<String> {
+        let cname = CString::new(name).ok()?;
+        let pi = unsafe { __system_property_find(cname.as_ptr()) };
+        if pi.is_null() {
+            return None;
+        }
+        let mut out: Option<String> = None;
+        unsafe { __system_property_read_callback(pi, on_read, &mut out as *mut _ as *mut c_void) };
+        out.filter(|s| !s.is_empty())
+    }
+}
+
+#[cfg(target_os = "android")]
+fn read_upscale() -> Option<Upscale> {
+    let filter = sysprop::get("persist.vendor.tegra.hwc.upscale.filter")?;
+    let comparison_mode = sysprop::get("sys.settings.upscale.comparison_mode.enabled")
+        .as_deref()
+        == Some("true");
+    Some(Upscale { filter, comparison_mode })
+}
+
+#[cfg(not(target_os = "android"))]
+fn read_upscale() -> Option<Upscale> {
+    None
+}
+
 pub fn snapshot_from(base: &Path) -> Snapshot {
     Snapshot {
         mem: read(base, "proc/meminfo").as_deref().and_then(parse_meminfo),
         load: read(base, "proc/loadavg").as_deref().and_then(parse_loadavg),
         uptime_secs: read(base, "proc/uptime").as_deref().and_then(parse_uptime),
         thermal: read_thermal(base),
+        upscale: read_upscale(),
     }
 }
 

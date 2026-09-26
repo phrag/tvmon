@@ -12,6 +12,7 @@ enum class MetricId(val label: String) {
     LOAD("System load"),
     TEMP("Temperatures"),
     UPTIME("Uptime"),
+    AI_UPSCALE("AI Upscaling"),
 }
 
 /**

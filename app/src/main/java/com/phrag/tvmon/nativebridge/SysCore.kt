@@ -70,4 +70,10 @@ class NativeSnapshot(private val root: JSONObject) {
             }
         }
     }
+
+    /** (filter mode, comparison-mode-on) from Shield's AI Upscaling toggle, or null. */
+    fun upscale(): Pair<String, Boolean>? {
+        val o = root.optJSONObject("upscale") ?: return null
+        return o.optString("filter") to o.optBoolean("comparison_mode")
+    }
 }
