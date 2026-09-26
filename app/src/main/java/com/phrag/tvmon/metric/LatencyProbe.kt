@@ -21,7 +21,8 @@ object LatencyProbe {
         private set
 
     private const val INTERVAL_MS = 10_000L
-    private const val PUBLIC_HOST = "1.1.1.1"
+    // Quad9: non-profit, security/privacy-focused resolver (no IP logging), Swiss-based.
+    private const val PUBLIC_HOST = "9.9.9.9"
     private const val PING_BIN = "/system/bin/ping"
     private val timeRegex = Regex("""time[=<]([0-9.]+)""")
 
