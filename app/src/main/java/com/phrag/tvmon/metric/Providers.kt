@@ -8,6 +8,7 @@ import android.hardware.display.DisplayManager
 import android.net.TrafficStats
 import android.net.wifi.WifiManager
 import android.os.BatteryManager
+import android.os.Build
 import android.view.Display
 import com.phrag.tvmon.nativebridge.NativeSnapshot
 
@@ -38,9 +39,21 @@ class ResolutionSource(private val ctx: Context) : MetricSource {
         val lines = mutableListOf(
             "${m.physicalWidth}x${m.physicalHeight} @ ${"%.2f".format(d.refreshRate)}Hz"
         )
-        val hdr = d.hdrCapabilities?.supportedHdrTypes ?: IntArray(0)
-        lines.add("HDR: " + hdrNames(hdr))
+        lines.add(hdrLine(d))
         return lines
+    }
+
+    // Display#getHdrCapabilities() is the panel's static capability list — it
+    // never changes based on what's currently playing, so it always reads the
+    // same regardless of SDR/HDR content. Display#isHdr() (API 33+) reflects
+    // what's actually being output right now; there's no equivalent below 33.
+    private fun hdrLine(d: Display): String {
+        val types = d.hdrCapabilities?.supportedHdrTypes ?: IntArray(0)
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (d.isHdr) "HDR: active (${hdrNames(types)})" else "HDR: inactive"
+        } else {
+            "HDR (panel): " + hdrNames(types)
+        }
     }
 
     // Context#getDisplay() requires a UI-associated context on API 30+, which a
