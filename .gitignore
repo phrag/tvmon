@@ -1,0 +1,14 @@
+# Android
+*.iml
+.gradle/
+/local.properties
+/.idea/
+/build/
+/app/build/
+/app/src/main/jniLibs/
+/captures/
+.externalNativeBuild/
+.cxx/
+
+# Rust
+/syscore/target/
