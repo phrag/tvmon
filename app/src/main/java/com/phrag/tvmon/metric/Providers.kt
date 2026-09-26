@@ -97,8 +97,13 @@ class WifiSource(private val ctx: Context) : MetricSource {
         val wm = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
             ?: return null
         // Link speed + frequency need no location permission (unlike SSID/BSSID),
-        // which keeps this tile permission-free.
-        val info = wm.connectionInfo ?: return null
+        // which keeps this tile permission-free. Some OEM builds still restrict
+        // ACCESS_WIFI_STATE further via app ops, so fail soft rather than crash.
+        val info = try {
+            wm.connectionInfo
+        } catch (e: SecurityException) {
+            null
+        } ?: return null
         val speed = info.linkSpeed        // Mbps, -1 if unknown
         val freq = info.frequency         // MHz (API 21+)
         if (speed < 0 && freq <= 0) return null

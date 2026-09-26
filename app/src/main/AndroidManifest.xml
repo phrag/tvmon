@@ -5,6 +5,9 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <!-- Only for the optional "start overlay on boot" toggle. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Wi-Fi tile: link speed/frequency (no location perm needed for these fields). -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- Declare a no-touch TV app so the leanback launcher accepts it. -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
