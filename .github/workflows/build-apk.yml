@@ -57,8 +57,11 @@ jobs:
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug --no-daemon
 
+      - name: Rename APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/tvmon.apk
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: tvmon-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: tvmon.apk
+          path: app/build/outputs/apk/debug/tvmon.apk
