@@ -14,6 +14,12 @@ permissions:
 env:
   PUBLISH_BRANCH: phrag/lucid-davinci-08spjq
 
+# One run per branch at a time. Publishing runs are never cancelled, so APK
+# and version.json always go up as a matching pair, in push order.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/phrag/lucid-davinci-08spjq' }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
