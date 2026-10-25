@@ -25,6 +25,7 @@ import com.phrag.tvmon.prefs.Prefs
 class SettingsActivity : Activity() {
 
     private lateinit var prefs: Prefs
+    private val updater by lazy { Updater(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,6 +85,11 @@ class SettingsActivity : Activity() {
             setBackgroundColor(Color.parseColor("#111318"))
             addView(col)
         })
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updater.check()   // offers a newer GitHub build, if any
     }
 
     // ---- tiny view helpers ----

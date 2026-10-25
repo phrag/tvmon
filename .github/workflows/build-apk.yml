@@ -9,6 +9,17 @@ on:
 permissions:
   contents: write
 
+# Only this branch publishes the debug-latest release that installed apps
+# self-update from; other branches and PRs just build and test.
+env:
+  PUBLISH_BRANCH: phrag/lucid-davinci-08spjq
+
+# One run per branch at a time. Publishing runs are never cancelled, so APK
+# and version.json always go up as a matching pair, in push order.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/phrag/lucid-davinci-08spjq' }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -57,8 +68,8 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build debug APK
-        run: ./gradlew :app:assembleDebug --no-daemon
+      - name: Build debug APK and run unit tests
+        run: ./gradlew :app:testDebugUnitTest :app:assembleDebug --no-daemon
 
       - name: Rename APK
         run: cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/tvmon.apk
@@ -66,7 +77,7 @@ jobs:
       # Published as a raw Release asset (not a zip) at a fixed, rolling tag
       # so there's always one stable "latest debug build" download link.
       - name: Publish debug APK as a release asset
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push' && github.ref_name == env.PUBLISH_BRANCH
         uses: softprops/action-gh-release@v2
         with:
           tag_name: debug-latest
@@ -76,3 +87,26 @@ jobs:
             Not a tagged release — this asset is overwritten on every push.
           prerelease: true
           files: app/build/outputs/apk/debug/tvmon.apk
+
+      # Self-updater metadata (Updater.kt). Published after the APK, so it never
+      # describes an APK that isn't there yet; the app also checks the sha256.
+      - name: Write version.json
+        if: github.event_name == 'push' && github.ref_name == env.PUBLISH_BRANCH
+        run: |
+          apk=app/build/outputs/apk/debug/tvmon.apk
+          printf '{"sha":"%s","time":%s,"apk":"tvmon.apk","sha256":"%s","size":%s}\n' \
+            "$GITHUB_SHA" "$(git log -1 --format=%ct)" \
+            "$(sha256sum "$apk" | cut -d' ' -f1)" "$(stat -c%s "$apk")" > version.json
+          cat version.json
+
+      - name: Publish version.json
+        if: github.event_name == 'push' && github.ref_name == env.PUBLISH_BRANCH
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: debug-latest
+          name: tvmon debug build (latest)
+          body: |
+            Automatically rebuilt from ${{ github.sha }} on branch `${{ github.ref_name }}`.
+            Not a tagged release — this asset is overwritten on every push.
+          prerelease: true
+          files: version.json

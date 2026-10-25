@@ -8,9 +8,13 @@
     <!-- Wi-Fi tile: link speed/frequency (no location perm needed for these fields). -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- Latency tile only: pings the gateway + a public resolver. Opt-in
-         (off by default) and only probes while that tile is enabled. -->
+    <!-- Latency tile: pings the gateway + a public resolver. Opt-in (off by
+         default) and only probes while that tile is enabled. Also the
+         self-updater's version check, once each time the settings open. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Self-update from the GitHub release (Updater.kt). Android 11 and older always ask to confirm; 12+ can skip that for updates. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
 
     <!-- Declare a no-touch TV app so the leanback launcher accepts it. -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
@@ -49,5 +53,10 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <!-- PackageInstaller status for self-updates. -->
+        <receiver
+            android:name=".UpdateReceiver"
+            android:exported="false" />
     </application>
 </manifest>
