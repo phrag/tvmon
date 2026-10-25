@@ -80,6 +80,7 @@ class SettingsActivity : Activity() {
             prefs.startOnBoot = on; true   // see BootReceiver + PROJECT.md caveat
         })
 
+        Updater(this).check()   // offers a newer GitHub build, if any
         setContentView(ScrollView(this).apply {
             setBackgroundColor(Color.parseColor("#111318"))
             addView(col)
