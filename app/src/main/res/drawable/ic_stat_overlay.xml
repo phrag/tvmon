@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notification small icon: a white readout panel with a graph line. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path android:pathData="M4,4h16a2,2 0 0,1 2,2v12a2,2 0 0,1 -2,2h-16a2,2 0 0,1 -2,-2v-12a2,2 0 0,1 2,-2z M4,6v12h16v-12z"
+        android:fillType="evenOdd" android:fillColor="#FFFFFFFF" />
+    <path android:pathData="M6,15L9,12L11,13.5L14,10L16,11.5L18,8.5"
+        android:strokeColor="#FFFFFFFF" android:strokeWidth="1.6" android:strokeLineCap="round" android:strokeLineJoin="round" />
+</vector>

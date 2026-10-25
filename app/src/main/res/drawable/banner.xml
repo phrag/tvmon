@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 320x180 launcher banner: dark gradient with a floating readout panel (stat
+     rows, a status dot and a small traffic graph), like the overlay itself. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="VectorRaster"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <path android:pathData="M0,0h320v180h-320z">
+        <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:fillColor">
+            <gradient android:type="linear" android:startX="0" android:startY="0"
+                android:endX="320" android:endY="180"
+                android:startColor="#FF111318" android:endColor="#FF12343A" />
+        </aapt:attr>
+    </path>
+    <!-- overlay panel -->
+    <path android:pathData="M64,34h192a12,12 0 0,1 12,12v88a12,12 0 0,1 -12,12h-192a12,12 0 0,1 -12,-12v-88a12,12 0 0,1 12,-12z"
+        android:fillColor="#B3000000" android:strokeColor="#334DB6AC" android:strokeWidth="2" />
+    <!-- status dot + stat rows -->
+    <path android:pathData="M80,58m-6,0a6,6 0 1,1 12,0a6,6 0 1,1 -12,0" android:fillColor="#FF3DDC97" />
+    <path android:pathData="M96,58h70" android:strokeColor="#FFF2F5F8" android:strokeWidth="8" android:strokeLineCap="round" />
+    <path android:pathData="M80,80h56" android:strokeColor="#FF4DB6AC" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M148,80h34" android:strokeColor="#99F2F5F8" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M80,98h40" android:strokeColor="#FF4DB6AC" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M132,98h50" android:strokeColor="#99F2F5F8" android:strokeWidth="6" android:strokeLineCap="round" />
+    <!-- traffic graph -->
+    <path android:pathData="M80,132L96,122L110,126L126,112L142,118L158,104L174,110L196,92L212,100L228,84L244,90"
+        android:strokeColor="#FF4FC3F7" android:strokeWidth="4" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M200,58h44" android:strokeColor="#66F2F5F8" android:strokeWidth="6" android:strokeLineCap="round" />
+</vector>

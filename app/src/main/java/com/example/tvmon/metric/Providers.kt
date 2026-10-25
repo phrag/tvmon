@@ -4,12 +4,13 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.hardware.display.DisplayManager
 import android.net.TrafficStats
-import android.net.wifi.WifiManager
+import android.net.wifi.WifiInfo
 import android.os.BatteryManager
 import android.os.Build
+import android.os.SystemClock
 import android.view.Display
-import android.view.WindowManager
 import com.example.tvmon.nativebridge.NativeSnapshot
 
 /**
@@ -17,11 +18,13 @@ import com.example.tvmon.nativebridge.NativeSnapshot
  * either uses a framework API or reads a world-readable kernel file via the
  * Rust core. See PROJECT.md for what's deliberately excluded.
  */
-fun allSources(context: Context): List<MetricSource> = listOf(
+fun allSources(context: Context, net: NetMonitor): List<MetricSource> = listOf(
     ResolutionSource(context),
     RamSource(context),
     BatterySource(context),
-    WifiSource(context),
+    VpnSource(net),
+    NetworkSource(net),
+    AddressesSource(net),
     TrafficSource(),
     LoadSource(),
     TempSource(),
@@ -39,15 +42,17 @@ class ResolutionSource(private val ctx: Context) : MetricSource {
         val lines = mutableListOf(
             "${m.physicalWidth}x${m.physicalHeight} @ ${"%.2f".format(d.refreshRate)}Hz"
         )
+        // Display.Mode.getSupportedHdrTypes replaces this on API 34+; this still works and covers 26+.
+        @Suppress("DEPRECATION")
         val hdr = d.hdrCapabilities?.supportedHdrTypes ?: IntArray(0)
         lines.add("HDR: " + hdrNames(hdr))
         return lines
     }
 
+    // Not Context.display: a Service isn't a visual context, and on API 30+
+    // that getter throws for one.
     private fun display(): Display? =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) ctx.display
-        else @Suppress("DEPRECATION")
-            (ctx.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay
+        ctx.getSystemService(DisplayManager::class.java)?.getDisplay(Display.DEFAULT_DISPLAY)
 
     private fun hdrNames(types: IntArray): String {
         if (types.isEmpty()) return "SDR"
@@ -88,44 +93,120 @@ class BatterySource(private val ctx: Context) : MetricSource {
     }
 }
 
-class WifiSource(private val ctx: Context) : MetricSource {
-    override val id = MetricId.WIFI
-    @Suppress("DEPRECATION")
-    override fun sample(native: NativeSnapshot?): List<String>? {
-        val wm = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
-            ?: return null
-        // Link speed + frequency need no location permission (unlike SSID/BSSID),
-        // which keeps this tile permission-free.
-        val info = wm.connectionInfo ?: return null
-        val speed = info.linkSpeed        // Mbps, -1 if unknown
-        val freq = info.frequency         // MHz (API 21+)
-        if (speed < 0 && freq <= 0) return null
-        val lines = mutableListOf<String>()
-        if (speed >= 0) lines.add("$speed Mbps")
-        if (freq > 0) lines.add(if (freq > 5000) "5 GHz" else "2.4 GHz")
-        return lines.ifEmpty { null }
+// ---- network sources (shared NetMonitor) --------------------------------------
+
+/**
+ * VPN up or down, and what it runs over. Drawn in the warning colour when no VPN
+ * is up, so a dropped tunnel stands out. Only VPNs that apply to this app are
+ * visible: a per-app VPN that excludes tvmon reads as off.
+ */
+class VpnSource(private val net: NetMonitor) : MetricSource {
+    override val id = MetricId.VPN
+    override var warn = false
+        private set
+
+    override fun sample(native: NativeSnapshot?): List<String> {
+        val s = net.state()
+        val vpn = s.vpn
+        warn = vpn == null
+        if (vpn == null) {
+            return listOf(NetFormat.vpnLine(false, null) + if (s.physical == null) " (offline)" else "")
+        }
+        // A VPN's capabilities usually also list the transport it runs over;
+        // otherwise fall back to the physical network we picked.
+        val via = vpn.transport ?: s.physical?.transport
+        val lines = mutableListOf(NetFormat.vpnLine(true, via))
+        val lp = vpn.lp
+        if (lp != null) {
+            lp.interfaceName?.let { lines.add("iface $it") }
+            lines.addAll(NetFormat.addresses(lp.linkAddresses.map { it.address }, max = 2))
+        }
+        if (!vpn.validated) lines.add("not validated")
+        return lines
     }
 }
 
-/** Total rx/tx delta since the previous sample. */
+/** Transport, interface, validated/metered, and the Wi-Fi link when on Wi-Fi. */
+class NetworkSource(private val net: NetMonitor) : MetricSource {
+    override val id = MetricId.NETWORK
+
+    override fun sample(native: NativeSnapshot?): List<String> {
+        val s = net.state()
+        val p = s.physical ?: return listOf("offline")
+        val head = listOfNotNull(p.transport ?: "Network", p.lp?.interfaceName).joinToString(" · ")
+        val lines = mutableListOf(head, NetFormat.stateLine(p.validated, p.metered, p.captivePortal))
+        if (p.transport == "Wi-Fi") lines.addAll(wifiLines(net.wifiInfo(p)))
+        return lines
+    }
+
+    private fun wifiLines(info: WifiInfo?): List<String> {
+        info ?: return emptyList()
+        val lines = mutableListOf<String>()
+        NetFormat.bandLine(info.frequency)?.let(lines::add)
+        val std = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) NetFormat.wifiStandard(info.wifiStandard) else null
+        val link = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            NetFormat.linkSpeedLine(info.txLinkSpeedMbps, info.rxLinkSpeedMbps)
+        } else {
+            NetFormat.linkSpeedLine(info.linkSpeed, -1)
+        }
+        listOfNotNull(std, link).joinToString(" · ").takeIf { it.isNotEmpty() }?.let(lines::add)
+        NetFormat.rssiLine(info.rssi)?.let(lines::add)
+        return lines
+    }
+}
+
+/**
+ * LAN addresses and gateway of the physical network; DNS and Private DNS of the
+ * network that actually resolves names (the VPN's, when one is up).
+ */
+class AddressesSource(private val net: NetMonitor) : MetricSource {
+    override val id = MetricId.ADDRESSES
+
+    override fun sample(native: NativeSnapshot?): List<String>? {
+        val s = net.state()
+        val phys = s.physical ?: return listOf("offline")
+        val lp = phys.lp ?: return listOf("offline")
+        val lines = NetFormat.addresses(lp.linkAddresses.map { it.address }).toMutableList()
+        lp.routes.firstOrNull { it.isDefaultRoute && it.gateway?.isAnyLocalAddress == false }
+            ?.gateway?.let { lines.add("gw " + NetFormat.addr(it)) }
+
+        val dnsNet = s.dflt ?: phys
+        val dnsLp = dnsNet.lp ?: lp
+        NetFormat.dnsLine(dnsLp.dnsServers)?.let { lines.add(if (dnsNet.isVpn) "$it (VPN)" else it) }
+        lines.add(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                NetFormat.privateDnsLine(true, dnsLp.isPrivateDnsActive, dnsLp.privateDnsServerName)
+            } else {
+                NetFormat.privateDnsLine(false, false, null)
+            }
+        )
+        return lines
+    }
+}
+
+/**
+ * Device-wide rx/tx throughput from TrafficStats, averaged over the time since
+ * the previous sample. With a VPN up the totals count both the tunnel and the
+ * interface under it, so figures read roughly double the real line rate.
+ */
 class TrafficSource : MetricSource {
     override val id = MetricId.TRAFFIC
-    private var lastRx = TrafficStats.getTotalRxBytes()
-    private var lastTx = TrafficStats.getTotalTxBytes()
+    private var lastRx = -1L
+    private var lastTx = -1L
+    private var lastAt = 0L
 
     override fun sample(native: NativeSnapshot?): List<String>? {
         val rx = TrafficStats.getTotalRxBytes()
         val tx = TrafficStats.getTotalTxBytes()
-        if (rx == TrafficStats.UNSUPPORTED.toLong()) return null
+        if (rx == TrafficStats.UNSUPPORTED.toLong() || tx == TrafficStats.UNSUPPORTED.toLong()) return null
+        val now = SystemClock.elapsedRealtime()
+        val secs = (now - lastAt) / 1000.0
+        val fresh = lastRx < 0 || secs <= 0 || secs > 5   // first sample, or tile was off for a while
         val dRx = (rx - lastRx).coerceAtLeast(0)
         val dTx = (tx - lastTx).coerceAtLeast(0)
-        lastRx = rx; lastTx = tx
-        return listOf("↓ ${rate(dRx)}", "↑ ${rate(dTx)}")
-    }
-
-    private fun rate(bytesPerSec: Long): String {
-        val kb = bytesPerSec / 1024.0
-        return if (kb < 1024) "%.0f KB/s".format(kb) else "%.1f MB/s".format(kb / 1024)
+        lastRx = rx; lastTx = tx; lastAt = now
+        if (fresh) return listOf("↓ …", "↑ …")
+        return listOf("↓ ${NetFormat.rate(dRx / secs)}", "↑ ${NetFormat.rate(dTx / secs)}")
     }
 }
 

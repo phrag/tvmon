@@ -17,6 +17,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_BOOT, false)
         set(v) = sp.edit().putBoolean(KEY_BOOT, v).apply()
 
+    /** Whether we already asked for POST_NOTIFICATIONS once (Android 13+). */
+    var askedNotifications: Boolean
+        get() = sp.getBoolean(KEY_ASKED_NOTIF, false)
+        set(v) = sp.edit().putBoolean(KEY_ASKED_NOTIF, v).apply()
+
     /** Overlay background alpha, 0..255. */
     var bgAlpha: Int
         get() = sp.getInt(KEY_ALPHA, 176)
@@ -43,13 +48,14 @@ class Prefs(context: Context) {
     companion object {
         private const val KEY_OVERLAY = "overlay_on"
         private const val KEY_BOOT = "start_on_boot"
+        private const val KEY_ASKED_NOTIF = "asked_notifications"
         private const val KEY_ALPHA = "bg_alpha"
         private const val KEY_TEXT = "text_color"
         private const val KEY_BG = "bg_color"
 
         // Sensible defaults: the things that always work unprivileged.
         private val DEFAULT_ON = setOf(
-            MetricId.RESOLUTION, MetricId.RAM, MetricId.LOAD, MetricId.TEMP,
+            MetricId.RESOLUTION, MetricId.RAM, MetricId.NETWORK, MetricId.LOAD, MetricId.TEMP,
         )
     }
 }

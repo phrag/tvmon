@@ -145,7 +145,7 @@ mod android {
 
     #[no_mangle]
     pub extern "system" fn Java_com_example_tvmon_nativebridge_SysCore_nativeSnapshotJson(
-        mut env: JNIEnv,
+        env: JNIEnv,
         _class: JClass,
     ) -> jstring {
         match env.new_string(snapshot_json()) {
