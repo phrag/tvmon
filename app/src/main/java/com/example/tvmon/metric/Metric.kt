@@ -7,7 +7,9 @@ enum class MetricId(val label: String) {
     RESOLUTION("Video output"),
     RAM("RAM"),
     BATTERY("Battery"),
-    WIFI("Wi-Fi"),
+    VPN("VPN"),
+    NETWORK("Network"),
+    ADDRESSES("IP / DNS"),
     TRAFFIC("Traffic"),
     LOAD("System load"),
     TEMP("Temperatures"),
@@ -25,4 +27,10 @@ enum class MetricId(val label: String) {
 interface MetricSource {
     val id: MetricId
     fun sample(native: NativeSnapshot?): List<String>?
+
+    /**
+     * True when the latest sample should be drawn in the warning colour (e.g.
+     * the VPN dropped). Read right after `sample`.
+     */
+    val warn: Boolean get() = false
 }

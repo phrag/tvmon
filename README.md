@@ -6,37 +6,77 @@ Shizuku** — works on a stock box. GPL-3.0.
 
 See `PROJECT.md` for scope and design decisions.
 
+## Privacy
+tvmon has **no `INTERNET` permission**: it cannot open a network socket, so
+nothing it reads (addresses, DNS, VPN state…) can leave the box. That also means
+there is no self-updater — see *Updating* below. Backups and device-to-device
+transfer of its settings are off too.
+
+Permissions it does ask for: display over other apps (the overlay), boot
+completed (optional start on boot), foreground service (keeps the overlay
+alive), post notifications (Android 13+, only so the "overlay is on"
+notification is visible; the overlay runs without it), network state and Wi-Fi
+state (network tiles). No location permission, so the SSID is never read.
+
+## Tiles
+| Tile | Shows |
+|------|-------|
+| Video output | negotiated resolution @ refresh, HDR types |
+| RAM | used / total |
+| Battery | %, mV, °C (hidden on boxes without one) |
+| VPN | **OFF in red** when no tunnel is up; when on: the transport under it, tunnel interface and address |
+| Network | Ethernet / Wi-Fi, interface, validated / metered; on Wi-Fi: band, channel + frequency, Wi-Fi standard, tx/rx link rate, RSSI in dBm with a quality word |
+| IP / DNS | LAN IPv4 / IPv6 addresses, default gateway, DNS servers (the VPN's when one is up), Private DNS state |
+| Traffic | live ↓/↑ throughput (TrafficStats, device-wide) |
+| System load / Temperatures / Uptime | from the Rust core (`/proc`, `/sys`) |
+
+Network data comes from `ConnectivityManager` callbacks (`NetworkCapabilities`,
+`LinkProperties`) plus `WifiInfo`. Caveats: a per-app VPN that excludes tvmon
+reads as off; with a VPN up the traffic totals count the tunnel and the
+interface under it, so they read about double; Ethernet link speed isn't
+available to an unprivileged app.
+
+The overlay keeps one view per tile and only updates text, and it shifts by a
+few dp every three minutes so its edges don't burn into OLED panels.
+
 ## Layout
 ```
 tvmon/
 ├── PROJECT.md            # decisions / scope (the source of truth)
-├── settings.gradle.kts   # + root build.gradle.kts, gradle.properties
-├── syscore/              # Rust core (unit-tested)  ✅ compiles
+├── settings.gradle.kts   # + root build.gradle.kts, gradle.properties, gradlew
+├── .github/workflows/build.yml   # CI + rolling "latest" release
+├── syscore/              # Rust core (unit-tested)
 │   ├── Cargo.toml
 │   └── src/lib.rs
-└── app/                  # Android app  (written, not yet compiled)
+└── app/
     ├── build.gradle.kts
-    └── src/main/
-        ├── AndroidManifest.xml
-        └── java/com/example/tvmon/
-            ├── SettingsActivity.kt   # launcher: toggles + transparency
-            ├── OverlayService.kt     # the floating tiles
-            ├── BootReceiver.kt
-            ├── metric/               # MetricSource interface + all providers
-            ├── nativebridge/         # JNI bridge to syscore
-            └── prefs/                # SharedPreferences
+    ├── debug.keystore    # shared debug key, so updates install over each other
+    └── src/
+        ├── main/
+        │   ├── AndroidManifest.xml
+        │   ├── res/      # banner, icon, strings, backup rules
+        │   └── java/com/example/tvmon/
+        │       ├── SettingsActivity.kt   # launcher: toggles + transparency
+        │       ├── OverlayService.kt     # foreground service + floating tiles
+        │       ├── BootReceiver.kt
+        │       ├── metric/               # MetricSource, providers, NetMonitor, NetFormat
+        │       ├── nativebridge/         # JNI bridge to syscore
+        │       └── prefs/                # SharedPreferences
+        └── test/                         # JVM unit tests (NetFormat)
 ```
 
 ## 1. Build the Rust core (.so)
+Needs the Android NDK (`sdkmanager "ndk;27.2.12479018"`) and cargo-ndk:
 ```bash
 cargo install cargo-ndk
 rustup target add aarch64-linux-android armv7-linux-androideabi
-cargo ndk -t arm64-v8a -t armeabi-v7a \
-    -o app/src/main/jniLibs build --release --manifest-path syscore/Cargo.toml
+export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018
+cd syscore
+cargo ndk -t arm64-v8a -t armeabi-v7a -o ../app/src/main/jniLibs build --release
 ```
-`arm64-v8a` covers the Shield 2019; `armeabi-v7a` the older ones. If you skip this
-step the app still runs — the native tiles (system load, temps, uptime) just show
-as unavailable.
+(Run it from `syscore/`: cargo-ndk 4 ignores `--manifest-path`.) `arm64-v8a`
+covers the Shield 2019; `armeabi-v7a` the older ones. If you skip this step the
+app still runs — the native tiles (system load, temps, uptime) just stay hidden.
 
 Run the core's tests any time with:
 ```bash
@@ -44,33 +84,47 @@ cargo test --manifest-path syscore/Cargo.toml
 ```
 
 ## 2. Build the app
-Open the project in Android Studio (it'll generate the Gradle wrapper) and
-**Build → Build APK(s)**, or from the command line once the wrapper exists:
+Point Gradle at your SDK (`echo sdk.dir=$ANDROID_HOME > local.properties`; the
+file is gitignored), then:
 ```bash
-./gradlew :app:assembleDebug
+./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
 ```
+The APK is `app/build/outputs/apk/debug/app-debug.apk`.
+
+CI (`.github/workflows/build.yml`) does all of the above on every push — cargo
+test, cargo-ndk for both ABIs, unit tests, lint, a check that the APK carries
+`libsyscore.so` — and on pushes to `main` replaces the rolling **latest**
+release with `tvmon.apk` and a `version.json` (commit, time, sha256, size).
 
 ## 3. Sideload to the Shield
 ```bash
 adb connect <shield-ip>:5555        # enable Network debugging on the Shield first
 adb install app/build/outputs/apk/debug/app-debug.apk
-adb shell am start -n com.example.tvmon/.SettingsActivity   # if the tile is hidden
 adb shell appops set com.example.tvmon SYSTEM_ALERT_WINDOW allow  # grant overlay
 ```
 
-Toggle **Show overlay** in the app, pick which tiles you want, and the floating
-readout appears over whatever you're watching.
+Open **tvmon** from the home screen, toggle **Show overlay**, pick which tiles
+you want, and the floating readout appears over whatever you're watching.
+
+## Updating
+There is no in-app updater (no `INTERNET` permission, on purpose). Grab
+`tvmon.apk` from the repo's *latest* release page — on a computer, or with a
+browser / downloader app on the TV — and install it over the old one:
+```bash
+adb install -r tvmon.apk
+```
+Every build is signed with the same committed debug key, so it installs over the
+previous one and keeps your settings. Compare its sha256 with `version.json` on
+the same release if you like.
 
 ## Status
-- `syscore`: compiles on Rust 1.75, 6/6 tests pass, verified against a live
-  `/proc`.
-- Android side: written but not compiler-checked here (no Android SDK/NDK in the
-  authoring environment). Expect to fix a stray import on first build.
+- `syscore`: 6/6 tests pass; cross-compiles for arm64-v8a and armeabi-v7a with
+  NDK r27c; the `Java_…_nativeSnapshotJson` JNI symbol is exported.
+- Android app: builds, 16/16 JVM unit tests pass, lint reports no issues, and
+  the debug APK contains `libsyscore.so` for both ABIs. **Not yet run on a
+  device** — the overlay, foreground service and network callbacks are
+  compiler- and lint-checked only.
 
 ## Known rough edges (also in PROJECT.md)
-- Leanback launcher tile needs a 320×180 `banner` drawable; use the `adb am
-  start` line until then.
-- Start-on-boot works via `BootReceiver`, but a robust boot start on Android 8+
-  wants a foreground service.
 - Text/background colour prefs exist; the colour-picker UI is a TODO (only the
   transparency slider is wired up so far).

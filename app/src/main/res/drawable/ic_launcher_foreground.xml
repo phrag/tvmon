@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive launcher icon foreground: a small readout panel with a status dot,
+     a stat row and a traffic graph, kept inside the 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:pathData="M37,36h34a5,5 0 0,1 5,5v26a5,5 0 0,1 -5,5h-34a5,5 0 0,1 -5,-5v-26a5,5 0 0,1 5,-5z"
+        android:fillColor="#CC000000" android:strokeColor="#FF4DB6AC" android:strokeWidth="1.5" />
+    <path android:pathData="M40,45m-2.5,0a2.5,2.5 0 1,1 5,0a2.5,2.5 0 1,1 -5,0" android:fillColor="#FF3DDC97" />
+    <path android:pathData="M46,45h22" android:strokeColor="#FFF2F5F8" android:strokeWidth="3" android:strokeLineCap="round" />
+    <path android:pathData="M38,66L44,61L49,63L55,56L60,59L66,51L70,53"
+        android:strokeColor="#FF4FC3F7" android:strokeWidth="2.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+</vector>

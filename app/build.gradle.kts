@@ -15,11 +15,25 @@ android {
         versionName = "0.1.0"
     }
 
+    // Committed debug key (the same one the sibling apps use) so every CI build
+    // has the same signature and the "latest" release APK installs over the
+    // previous one. Debug-only: not a secret, don't use it for a store release.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
         }
     }
+
+    testOptions { unitTests.isReturnDefaultValues = true }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -31,7 +45,7 @@ android {
 
     // The Rust .so files are built out-of-band by cargo-ndk into
     // src/main/jniLibs/<abi>/libsyscore.so. Gradle just packages whatever's there.
-    // Build them with (from repo root):
+    // CI does this before assembling. Build them locally with (from repo root):
     //   cargo install cargo-ndk        # once
     //   rustup target add aarch64-linux-android armv7-linux-androideabi
     //   cargo ndk -t arm64-v8a -t armeabi-v7a \
@@ -40,5 +54,6 @@ android {
 }
 
 dependencies {
-    // Intentionally none. Uses only the Android framework + org.json (bundled).
+    // Intentionally none at runtime. Uses only the Android framework + org.json (bundled).
+    testImplementation("junit:junit:4.13.2")
 }

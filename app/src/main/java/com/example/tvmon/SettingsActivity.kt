@@ -1,7 +1,9 @@
 package com.example.tvmon
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
@@ -24,6 +26,10 @@ import com.example.tvmon.prefs.Prefs
 class SettingsActivity : Activity() {
 
     private lateinit var prefs: Prefs
+    private lateinit var overlaySwitch: Switch
+
+    /** The user tried to enable the overlay and was sent to grant the permission. */
+    private var wantOverlay = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,16 +43,23 @@ class SettingsActivity : Activity() {
         col.addView(header("tvmon"))
 
         // Master overlay toggle — requests the overlay permission on first enable.
-        col.addView(switchRow("Show overlay", prefs.overlayOn) { on ->
+        overlaySwitch = switchRow("Show overlay", prefs.overlayOn) { on ->
             if (on && !canOverlay()) {
+                wantOverlay = true
                 requestOverlayPermission()
                 return@switchRow false   // keep off until permission granted
             }
+            wantOverlay = false
             prefs.overlayOn = on
-            val svc = Intent(this, OverlayService::class.java)
-            if (on) startService(svc) else stopService(svc)
+            if (on) {
+                requestNotificationPermission()
+                OverlayService.start(this)
+            } else {
+                stopService(Intent(this, OverlayService::class.java))
+            }
             true
-        })
+        }
+        col.addView(overlaySwitch)
 
         col.addView(sectionLabel("Metrics"))
         for (id in MetricId.entries) {
@@ -57,7 +70,7 @@ class SettingsActivity : Activity() {
 
         col.addView(sectionLabel("Appearance"))
         col.addView(TextView(this).apply {
-            text = "Background transparency"
+            setText(R.string.bg_transparency)
             setTextColor(Color.LTGRAY)
         })
         col.addView(SeekBar(this).apply {
@@ -74,13 +87,39 @@ class SettingsActivity : Activity() {
 
         col.addView(sectionLabel("System"))
         col.addView(switchRow("Start overlay on boot", prefs.startOnBoot) { on ->
-            prefs.startOnBoot = on; true   // see BootReceiver + PROJECT.md caveat
+            prefs.startOnBoot = on; true   // see BootReceiver
         })
 
         setContentView(ScrollView(this).apply {
             setBackgroundColor(Color.parseColor("#111318"))
             addView(col)
         })
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (!canOverlay()) return
+        if (wantOverlay) {
+            // Back from the permission screen with it granted: finish what the user started.
+            wantOverlay = false
+            overlaySwitch.isChecked = true
+        } else if (prefs.overlayOn && !OverlayService.running) {
+            // On but not showing (e.g. killed, or app updated): bring it back.
+            OverlayService.start(this)
+        }
+    }
+
+    /**
+     * Android 13+ hides foreground-service notifications unless the user allows
+     * notifications. The overlay runs either way, so this is a one-shot polite
+     * ask, never a gate.
+     */
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
+        if (prefs.askedNotifications) return
+        prefs.askedNotifications = true
+        runCatching { requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIFICATIONS) }
     }
 
     // ---- tiny view helpers ----
@@ -119,8 +158,7 @@ class SettingsActivity : Activity() {
         }
     }
 
-    private fun canOverlay(): Boolean =
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)
+    private fun canOverlay(): Boolean = Settings.canDrawOverlays(this)   // minSdk 26
 
     private fun requestOverlayPermission() {
         startActivity(
@@ -132,4 +170,8 @@ class SettingsActivity : Activity() {
     }
 
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+
+    companion object {
+        private const val REQ_NOTIFICATIONS = 1
+    }
 }
