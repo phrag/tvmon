@@ -1,5 +1,12 @@
 # tvmon
 
+[![Build](https://img.shields.io/github/actions/workflow/status/phrag/tvmon/build.yml?branch=main&label=Build)](https://github.com/phrag/tvmon/actions/workflows/build.yml)
+[![Licence: GPL-3.0](https://img.shields.io/github/license/phrag/tvmon)](LICENSE)
+![Android TV 8.0+](https://img.shields.io/badge/Android%20TV-8.0%2B-3DDC84?logo=android&logoColor=white)
+![No INTERNET permission](https://img.shields.io/badge/permissions-no%20INTERNET-2ea44f)
+![No Google Play Services](https://img.shields.io/badge/Google%20Play%20Services-none-2ea44f)
+![Rust core](https://img.shields.io/badge/core-Rust-dea584?logo=rust&logoColor=white)
+
 A FOSS, TV-first system + video-output overlay for Android TV / NVIDIA Shield.
 Kotlin UI + framework metrics, Rust core for kernel-file parsing. **No root, no
 Shizuku** — works on a stock box. GPL-3.0.
